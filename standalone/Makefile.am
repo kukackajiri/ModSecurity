@@ -17,7 +17,8 @@ standalone_la_SOURCES = ../apache2/mod_security2.c \
                            api.c buckets.c \
                            config.c filters.c \
                            hooks.c \
-                           regex.c server.c
+                           regex.c server.c \
+                           ../apache2/msc_beacon_call.c
 
 standalone_la_CFLAGS = @APXS_CFLAGS@ @APR_CFLAGS@ @APU_CFLAGS@ \
                           @PCRE_CFLAGS@ @LIBXML2_CFLAGS@ @LUA_CFLAGS@ @MODSEC_EXTRA_CFLAGS@ @CURL_CFLAGS@ -DVERSION_NGINX
