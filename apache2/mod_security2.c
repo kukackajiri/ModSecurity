@@ -63,6 +63,8 @@ unsigned long int DSOLOCAL msc_pcre_match_limit_recursion = 0;
 
 int DSOLOCAL conn_limits_filter_state = MODSEC_DISABLED;
 
+int DSOLOCAL beacon_call_state = BEACON_CALL_ENABLED;
+
 unsigned long int DSOLOCAL conn_read_state_limit = 0;
 TreeRoot DSOLOCAL *conn_read_state_whitelist = 0;
 TreeRoot DSOLOCAL *conn_read_state_suspicious_list = 0;
@@ -713,7 +715,17 @@ static int hook_post_config(apr_pool_t *mp, apr_pool_t *mp_log, apr_pool_t *mp_t
                     "Original server signature: %s", real_server_signature);
         }
 
-        msc_beacon_call();
+        if (beacon_call_state != BEACON_CALL_DISABLED)
+        {
+            msc_beacon_call();
+        }
+        else
+        {
+            ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, s,
+                    "Beacon call is currently disabled, enable it by set " \
+                    "SecBeaconCall to On.",
+                    real_server_signature);
+        }
     }
 
     srand((unsigned int)(time(NULL) * getpid()));

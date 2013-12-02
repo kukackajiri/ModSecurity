@@ -145,6 +145,8 @@ extern DSOLOCAL unsigned long int msc_pcre_match_limit_recursion;
 
 extern DSOLOCAL int conn_limits_filter_state;
 
+extern DSOLOCAL int beacon_call_state;
+
 extern DSOLOCAL unsigned long int conn_read_state_limit;
 extern DSOLOCAL TreeRoot *conn_read_state_whitelist;
 extern DSOLOCAL TreeRoot *conn_read_state_suspicious_list;
@@ -188,6 +190,9 @@ extern DSOLOCAL int *unicode_map_table;
 #define MODSEC_DISABLED                 0
 #define MODSEC_DETECTION_ONLY           1
 #define MODSEC_ENABLED                  2
+
+#define BEACON_CALL_ENABLED             1
+#define BEACON_CALL_DISABLED            0
 
 #define HASH_DISABLED             0
 #define HASH_ENABLED              1

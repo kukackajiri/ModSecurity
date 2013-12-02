@@ -2177,6 +2177,26 @@ static const char *cmd_rule_engine(cmd_parms *cmd, void *_dcfg, const char *p1)
     return NULL;
 }
 
+static const char *cmd_beacon_call(cmd_parms *cmd, void *_dcfg, const char *p1)
+{
+    if (strcasecmp(p1, "on") == 0)
+    {
+        beacon_call_state = BEACON_CALL_ENABLED;
+    }
+    else if (strcasecmp(p1, "off") == 0)
+    {
+        beacon_call_state = BEACON_CALL_DISABLED;
+    }
+    else
+    {
+        return apr_psprintf(cmd->pool, "ModSecurity: Invalid value for " \
+                "SecBeaconCall: %s", p1);
+    }
+
+    return NULL;
+}
+
+
 static const char *cmd_rule_inheritance(cmd_parms *cmd, void *_dcfg, int flag)
 {
     directory_config *dcfg = (directory_config *)_dcfg;
@@ -3386,6 +3406,14 @@ const command_rec module_directives[] = {
     AP_INIT_TAKE1 (
         "SecRuleEngine",
         cmd_rule_engine,
+        NULL,
+        CMD_SCOPE_ANY,
+        "On or Off"
+    ),
+
+    AP_INIT_TAKE1 (
+        "SecBeaconCall",
+        cmd_beacon_call,
         NULL,
         CMD_SCOPE_ANY,
         "On or Off"
