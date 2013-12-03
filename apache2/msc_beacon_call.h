@@ -21,13 +21,16 @@
 #include "apr_optional.h"
 #include "msc_pcre.h"
 
+#if WIN32
+#define snprintf _snprintf
+#endif
+
 #define BEACON_CALL_IN_BETWEEN_DOTS 13
 
 #define MODSECURITY_DNS_BEACON_POSTFIX "modsec.zimmerle.org"
 
 static const char msc_beacon_basis_32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-int DSOLOCAL msc_apr_base32_encode(char *encoded, const uint8_t *string, int len);
 int msc_beacon_call (void);
 
 #endif
