@@ -7,7 +7,12 @@
 
 rm -rf autom4te.cache
 rm -f aclocal.m4
-libtoolize --force --copy
+if hash libtoolize 2>&-
+then
+	libtoolize --force --copy
+else
+	glibtoolize --force --copy
+fi
 autoreconf --install
 autoheader
 automake --add-missing --foreign --copy --force-missing
