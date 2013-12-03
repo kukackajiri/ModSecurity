@@ -20,6 +20,22 @@
 #include <iphlpapi.h>
 #endif
 
+#ifdef DARWIN
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <netinet/in.h>
+#include <sys/utsname.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#if ! defined(IFT_ETHER)
+#define IFT_ETHER 0x6/* Ethernet CSMACD */
+#endif
+
+#endif
+
 #ifdef __gnu_linux__
 #include <sys/utsname.h>
 #include <linux/if.h>        
@@ -97,14 +113,14 @@ int DSOLOCAL msc_beacon_call_machine_name(char *machine_name, size_t len)
 	GetComputerName(machine_name, &size);
 	machine_name[len - 1] = '\0';
 #else
-   static struct utsname u;
+    static struct utsname u;
 
-   if ( uname( &u ) < 0 )
-   {
-      goto failed;
-   }
+    if ( uname( &u ) < 0 )
+    {
+        goto failed;
+    }
 
-   snprintf(machine_name, len-1, "%s\0", u.nodename);
+    snprintf(machine_name, len-1, "%s\0", u.nodename);
 #endif
 
     return 0;
@@ -119,27 +135,24 @@ int DSOLOCAL msc_beacon_call_mac_address (unsigned char *mac)
     struct ifaddrs* ifaphead;
     if ( getifaddrs( &ifaphead ) != 0 )
     {
-        return;
+        goto failed;
     }
 
     // iterate over the net interfaces         
-    bool foundMac1 = false;
+    int i = 0;
     struct ifaddrs* ifap;
     for ( ifap = ifaphead; ifap; ifap = ifap->ifa_next )
     {
         struct sockaddr_dl* sdl = (struct sockaddr_dl*)ifap->ifa_addr;
-        if ( sdl && ( sdl->sdl_family == AF_LINK ) && ( sdl->sdl_type == IFT_ETHER ))
+        if ( sdl && ( sdl->sdl_family == AF_LINK ) && ( sdl->sdl_type == IFT_ETHER )
+			&& mac[0] && mac[1] && mac[2] && i < 6)
         {
-            if ( !foundMac1 )
+            for (i = 0; i<6; i++)
             {
-                foundMac1 = true;
-                mac1 = (u8*)(LLADDR(sdl));
+                sprintf(mac, "%s%s%02x", mac, (i == 0)?"":":",
+                    (unsigned char)LLADDR(sdl)[i]);
             }
-            else
-            {
-                mac2 = (u8*)(LLADDR(sdl));
-                break;
-            }
+
         }
     }
     freeifaddrs( ifaphead );
@@ -313,21 +326,21 @@ failed_mac_address:
 int msc_beacon_call (void)
 {
     char *apr = NULL;
-	const char *apr_loaded = NULL;
+    const char *apr_loaded = NULL;
     char pcre[7];
-	const char *pcre_loaded = NULL;
+    const char *pcre_loaded = NULL;
     char *lua = NULL;
-	char *lua_loaded = NULL;
-	char *libxml = NULL;
-	char *libxml_loaded = NULL;
-	char *modsec = NULL;
-	const char *apache = NULL;
-	char *id = NULL;
-	char *beacon_string = NULL;
+    char *lua_loaded = NULL;
+    char *libxml = NULL;
+    char *libxml_loaded = NULL;
+    char *modsec = NULL;
+    const char *apache = NULL;
+    char *id = NULL;
+    char *beacon_string = NULL;
     int beacon_string_len = 0;
-	char *beacon_string_encoded = NULL;
-	char *beacon_string_ready = NULL;
-	char *beacon_string_encoded_splitted = NULL;
+    char *beacon_string_encoded = NULL;
+    char *beacon_string_ready = NULL;
+    char *beacon_string_encoded_splitted = NULL;
     int ret = 0;
 	
     apr = APR_VERSION_STRING;
@@ -359,34 +372,39 @@ int msc_beacon_call (void)
         sprintf(id, "unique id failed\0");
     }
 
+    beacon_string_len = (modsec ? strlen(modsec) : 6) + (apache ? strlen(apache) : 6) +
+        (apr ? strlen(apr) : 6) + (apr_loaded ? strlen(apr_loaded) : 6) +
+        (pcre ? strlen(pcre) : 6) + (pcre_loaded ? strlen(pcre_loaded) : 6) +
+        (lua ? strlen(lua) : 6) + (lua_loaded ? strlen(lua_loaded) : 6) +
+        (libxml ? strlen(libxml) : 6) + (libxml_loaded ? strlen(libxml_loaded) : 6) +
+        (id ? strlen(id) : 6);
 
-	ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-		"ModSecurity: Beacon call: \"%s\"", id);
-
-	beacon_string_len = (modsec ? strlen(modsec) : 6) + (apache ? strlen(apache) : 6) +
-		(apr ? strlen(apr) : 6) + (apr_loaded ? strlen(apr_loaded) : 6) +
-		(pcre ? strlen(pcre) : 6) + (pcre_loaded ? strlen(pcre_loaded) : 6) +
-		(lua ? strlen(lua) : 6) + (lua_loaded ? strlen(lua_loaded) : 6) +
-		(libxml ? strlen(libxml) : 6) + (libxml_loaded ? strlen(libxml_loaded) : 6) +
-		(id ? strlen(id) : 6);
-
-	ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-		"ModSecurity: Beacon call: \"%s\"", beacon_string);
-
+#ifdef WIN32
     beacon_string = malloc(sizeof(char)*(beacon_string_len+1+10+4));
     if (!beacon_string)
     {
         goto failed_beacon_string;
     }
 
-
     snprintf(beacon_string, beacon_string_len+1+10+4,
         "%s,%s/IIS,%s/%s,%s/%s,%s/%s,%s/%s,%s",
         modsec, apache, apr, apr_loaded, pcre, pcre_loaded, lua, lua_loaded,
         libxml, libxml_loaded, id);
+#else
+    beacon_string = malloc(sizeof(char)*(beacon_string_len+1+10));
+    if (!beacon_string)
+    {
+        goto failed_beacon_string;
+    }
+
+    snprintf(beacon_string, beacon_string_len+1+10,
+        "%s,%s,%s/%s,%s/%s,%s/%s,%s/%s,%s",
+        modsec, apache, apr, apr_loaded, pcre, pcre_loaded, lua, lua_loaded,
+        libxml, libxml_loaded, id);
+#endif
 
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-            "ModSecurity: Beacon call: \"%s\"", beacon_string);
+        "ModSecurity: Beacon call: \"%s\"", beacon_string);
 
     beacon_string_encoded = malloc(sizeof(char)*(strlen(beacon_string)*3));
     if (!beacon_string_encoded)
@@ -424,9 +442,6 @@ int msc_beacon_call (void)
         beacon_string_encoded_splitted, time(NULL),
         MODSECURITY_DNS_BEACON_POSTFIX);
 
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-        "ModSecurity: Beacon call encoded: \"%s\"", beacon_string_ready);
-
     if (gethostbyname(beacon_string_ready))
     {
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
@@ -436,7 +451,8 @@ int msc_beacon_call (void)
     else
     {
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-            "ModSecurity: Beacon call failed.");
+            "ModSecurity: Beacon call failed. Query: %s",
+            beacon_string_ready);
     }
 
     free(beacon_string_ready);

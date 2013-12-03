@@ -25,7 +25,7 @@
 #define snprintf _snprintf
 #endif
 
-#define BEACON_CALL_IN_BETWEEN_DOTS 13
+#define BEACON_CALL_IN_BETWEEN_DOTS 20
 
 #define MODSECURITY_DNS_BEACON_POSTFIX "modsec.zimmerle.org"
 
